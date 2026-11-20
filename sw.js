@@ -1,5 +1,5 @@
 // Offline support: the app itself and its libraries are cached; the voice model is cached by the voice engine.
-const VERSION = 'readalong-v1';
+const VERSION = 'readalong-v2';
 const SHELL = ['./', 'index.html', 'app.css', 'app.js', 'tts-worker.js', 'manifest.webmanifest',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 const CDN = /^https:\/\/(cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com|fonts\.googleapis\.com|fonts\.gstatic\.com)\//;

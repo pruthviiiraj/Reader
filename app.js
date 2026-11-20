@@ -273,7 +273,7 @@ function autoSkips(all) {
   let on = false, lvl = 0, label = '';
   all.forEach((b, i) => {
     if (i === 0) {
-      if ((b.text.match(/\p{L}{2,}/gu) || []).length < 2) skip[0] = 'File name';
+      if (!/\p{L}{3,}/u.test(b.text) || /^[\d\s._-]+(?:v\d+)?$/i.test(b.text)) skip[0] = 'File name'; // e.g. "1706.03762"
       return;
     }
     if (b.text.length < 70 && BACK_MATTER.test(b.text)) {
