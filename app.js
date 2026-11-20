@@ -131,6 +131,11 @@ const clean = t => t
   .replace(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g, '')
   .replace(/\b(?:doi|arxiv|isbn|issn|pmid|pmcid)\s*:?\s*[\w./:-]*\d[\w./:-]*/gi, '')
   .replace(/\(\s*[,;:.]?\s*\)|\[\s*\]|<\s*>/g, '')
+  .replace(/[\p{Extended_Pictographic}\u{1F1E6}-\u{1F1FF}\uFE0F\u200D\u20E3]/gu, '') // emoji
+  .replace(/\s+\|\s+/g, ', ')                                    // "a | b" separators
+  .replace(/(?:\*\*|__|~~|`)/g, '')
+  .replace(/[<>{}]+/g, ' ')                               // stray formatting marks
+  .replace(/^\s*(?:[-–—*•·>]\s+)+/, '')                            // leading bullets and quote marks
   .replace(/\s+([,.;:!?])/g, '$1')
   .replace(/\s+/g, ' ').trim();
 
@@ -148,10 +153,10 @@ function finalize(blocks) {
 }
 
 /* ════════════════════════════ importers → { title, meta, kind, blocks:[{tag,level,text}] } */
-const BLOCK_SEL = 'h1,h2,h3,h4,h5,h6,p,li,blockquote,dt,dd';
+const BLOCK_SEL = 'h1,h2,h3,h4,h5,h6,p,li,blockquote,dt,dd,div';
 function blocksFromHTML(html) {
   const d = new DOMParser().parseFromString(html, 'text/html');
-  d.querySelectorAll('script,style,noscript,pre,code,svg,math,figure,figcaption,table,sup.reference,button,nav,form,iframe,aside,footer,[aria-hidden=true]').forEach(e => e.remove());
+  d.querySelectorAll('script,style,noscript,pre,svg,math,figure,figcaption,table,sup.reference,button,nav,form,iframe,aside,footer,[aria-hidden=true]').forEach(e => e.remove());
   const out = [];
   d.body.querySelectorAll(BLOCK_SEL).forEach(el => {
     let t;
@@ -170,13 +175,22 @@ function textToBlocks(t) {
   return finalize(paras.map(p => ({ tag: 'p', level: 0, text: p.replace(/-\n(?=[a-z])/g, '') })));
 }
 function mdToBlocks(md) {
-  md = md.replace(/\r\n?/g, '\n')
-    .replace(/^---\n[\s\S]*?\n---\n?/, '')
+  md = md.replace(/\r\n?/g, '\n').replace(/^---\n[\s\S]*?\n---\n?/, '');
+  // footnotes: keep their text in a "Footnotes" section at the end (skipped by default), drop the [^1] markers
+  const notes = [];
+  md = md.replace(/^\[\^[^\]]+\]:[ \t]*(.*(?:\n(?: {2,}|\t).*)*)/gm, (m, body) => { notes.push(body.replace(/\s+/g, ' ')); return ''; });
+  if (notes.length) md += '\n\n## Footnotes\n\n' + notes.map(n => n + '\n').join('\n');
+  md = md
+    .replace(/\[\^[^\]]+\]|\^\[[^\]]*\]/g, '')                       // footnote markers
+    .replace(/\$\$[\s\S]*?\$\$/g, '')                                // display maths
+    .replace(/\$([^$\n]*[\\^_{}][^$\n]*)\$/g, '')                   // inline LaTeX (leaves prices like $37 alone)
+    .replace(/!\[[^\]]*\]\[[^\]]*\]/g, '')                          // reference-style images (badges)
+    .replace(/\[\s*\]\[[^\]]*\]|\[\s*\]\([^)]*\)/g, '')             // links left empty by the above
     .replace(/%%[\s\S]*?%%/g, '')
     .replace(/!\[\[[^\]]*\]\]/g, '')
     .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
     .replace(/\[\[([^\]|]*)\|([^\]]*)\]\]/g, '$2')
-    .replace(/\[\[([^\]]*)\]\]/g, (m, a) => a.replace(/#\^?/g, ', '))
+    .replace(/\[\[([^\]]*)\]\]/g, (m, a) => a.split('/').pop().replace(/\.md$/i, '').replace(/#\^?/g, ', '))
     .replace(/==([^=\n]+)==/g, '$1')
     .replace(/^(\s*>\s*)\[!(\w+)\][+-]?\s*/gm, (m, p, k) => p + k.charAt(0).toUpperCase() + k.slice(1) + '. ')
     .replace(/\s\^[\w-]+$/gm, '')
