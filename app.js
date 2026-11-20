@@ -306,6 +306,7 @@ async function loadFile(file) {
       d = { title: baseName(file.name), meta: 'Word document', kind: 'docx', blocks: blocksFromHTML(r.value) };
     } else if (ext === 'md' || ext === 'markdown') d = { title: baseName(file.name), meta: 'Note', kind: 'note', blocks: mdToBlocks(await file.text()) };
     else if (ext === 'html' || ext === 'htm') d = htmlToDoc(await file.text());
+    else if (/^(image|video|audio)\//.test(file.type) || ['zip', 'epub', 'key', 'numbers', 'xlsx', 'pptx'].includes(ext)) throw new Error(`Readalong can't read .${ext || 'this kind of'} files. Try PDF, Word, Markdown or text.`);
     else if (ext === 'doc' || ext === 'pages') throw new Error(`.${ext} files can't be opened. Export it as .docx or PDF first.`);
     else d = { title: baseName(file.name), meta: 'Text', kind: 'text', blocks: textToBlocks(await file.text()) };
     if (d.kind !== 'web' && d.blocks[0] && d.blocks[0].tag === 'h' && d.blocks[0].level <= 1) d.title = d.blocks.shift().text;
@@ -1112,6 +1113,8 @@ addEventListener('pagehide', () => { if (doc) db.put(doc); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && doc) db.put(doc); });
 
 /* ════════════════════════════ start */
+// iPhone's file picker greys out .md notes when a list of types is given, so let it show every file there.
+if (isTouchDevice) $('#fileIn').removeAttribute('accept');
 layoutMode();
 applySettings();
 renderVoiceStatus();
